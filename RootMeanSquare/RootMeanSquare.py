@@ -4,11 +4,11 @@ import os
 import sys
 import numpy as np
 try:
-    import tables
+    import h5py
 except:
     import slicer
-    slicer.util.pip_install('tables')
-    import tables
+    slicer.util.pip_install('h5py')
+    import h5py
 
 def main(signal, samplingRate):
     N = int(np.ceil(samplingRate * 50e-3)) # length of sub samples
@@ -26,8 +26,8 @@ def main(signal, samplingRate):
 
 
 if __name__ == "__main__":
-    dataFile = tables.open_file(sys.argv[-1],'r')
-    outValue = main(dataFile.get_node('/data')[:], dataFile.get_node('/sr')[:][0])
+    dataFile = h5py.File(sys.argv[-1], 'r', libver='latest', swmr=True)
+    outValue = main(dataFile['data'][:], dataFile['sr'][:][0])
     dataFile.close()
     returnParameterFile = open(sys.argv[-2], "w")
     returnParameterFile.write("rootMeanSquare = %.2f" % (outValue))
