@@ -2,32 +2,32 @@
 
 import os
 import sys
+import slicer
+import numpy as np
+try:
+    import tables
+except:
+    slicer.util.pip_install('tables')
+    import tables
 
-def main(input, sigma, output):
-
-    import SimpleITK as sitk
-
-    reader = sitk.ImageFileReader()
-    reader.SetFileName(input)
-    image = reader.Execute()
-
-    pixelID = image.GetPixelID()
-
-    gaussian = sitk.SmoothingRecursiveGaussianImageFilter()
-    gaussian.SetSigma(sigma)
-    image = gaussian.Execute(image)
-
-    caster = sitk.CastImageFilter()
-    caster.SetOutputPixelType(pixelID)
-    image = caster.Execute(image)
-
-    writer = sitk.ImageFileWriter()
-    writer.SetFileName (output)
-    writer.Execute (image)
+def main(signal, samplingRate):
+    N = int(np.ceil(samplingRate * 50e-3)) # length of sub samples
+    signal = signal[int(np.remainder(len(signal),N)):] # cut signal so can be devided by N
+    X = np.reshape(signal, (-1,N)) # split signal into samples of length N and put them into matrix
+    rms = np.sqrt(np.mean(X**2, axis=1)) # root mean square value
+    rms_median = np.median(rms)
+    rms_std = np.std(rms)
+    stableParts = (rms < (rms_median+3*rms_std)) & (rms > (rms_median-3*rms_std))
+    edges = [0] + np.argwhere(np.logical_not(stableParts)).flatten().tolist() + [len(stableParts)]
+    longest = int(np.argmax(np.diff(edges)))
+    X = X[edges[longest]+3:edges[longest+1]-3][:]
+    stableSignal = X.flatten()
+    return np.sqrt(np.mean(stableSignal**2))
 
 
 if __name__ == "__main__":
-    if len (sys.argv) < 4:
-        print("Usage: RootMeanSquare <input> <sigma> <output>")
-        sys.exit (1)
-    main(sys.argv[1], float(sys.argv[2]), sys.argv[3])
+    dataFile = tables.open_file(sys.argv[-1],'r')
+    outValue = main(dataFile.get_node('/data')[:], dataFile.get_node('/sr')[:][0])
+    returnParameterFile = open(sys.argv[-2], "w")
+    returnParameterFile.write("rootMeanSquare = %.2f" % (outValue))
+    returnParameterFile.close()
