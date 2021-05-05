@@ -2,11 +2,11 @@
 
 import os
 import sys
-import slicer
 import numpy as np
 try:
     import tables
 except:
+    import slicer
     slicer.util.pip_install('tables')
     import tables
 
@@ -28,6 +28,7 @@ def main(signal, samplingRate):
 if __name__ == "__main__":
     dataFile = tables.open_file(sys.argv[-1],'r')
     outValue = main(dataFile.get_node('/data')[:], dataFile.get_node('/sr')[:][0])
+    dataFile.close()
     returnParameterFile = open(sys.argv[-2], "w")
     returnParameterFile.write("rootMeanSquare = %.2f" % (outValue))
     returnParameterFile.close()
