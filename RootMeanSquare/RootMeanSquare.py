@@ -27,7 +27,11 @@ def main(signal, samplingRate):
 
 if __name__ == "__main__":
     dataFile = h5py.File(sys.argv[-1], 'r', libver='latest', swmr=True)
-    outValue = main(dataFile['data'][:], dataFile['sr'][:][0])
+    samplingRate = dataFile['sr'][:][0]
+    if (len(dataFile['data']) / samplingRate) < 4:
+        outValue = np.NaN
+    else:
+        outValue = main(dataFile['data'][:], samplingRate)
     dataFile.close()
     returnParameterFile = open(sys.argv[-2], "w")
     returnParameterFile.write("rootMeanSquare = %.2f" % (outValue))
